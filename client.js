@@ -59,6 +59,22 @@ async function register(secret, name) {
     return json.id;
 }
 
+async function downloadMessages(secret, id) {
+    console.log('downloading messages...');
+
+    const parameters = {
+        secret: secret,
+        device_id: id,
+    };
+
+    const json = await retryFetch(api_url + '/messages.json?' + new URLSearchParams(parameters), {
+        method: 'get',
+    }).then(res => res.json());
+    check(json);
+
+    return json.messages;
+}
+
 async function main() {
     const email = process.env['EMAIL'];
     const password = process.env['PASSWORD'];
@@ -70,6 +86,15 @@ async function main() {
     const id = process.env['ID'] || await register(secret, name);
 
     console.log(`id = ${id}`);
+
+    const messages = await downloadMessages(secret, id);
+
+    messages.forEach(message => {
+        console.log();
+        console.log(message.title ?? message.app);
+        console.log('-'.repeat(60));
+        console.log(message.message);
+    });
 }
 
 main();
