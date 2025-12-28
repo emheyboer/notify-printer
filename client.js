@@ -41,12 +41,35 @@ async function login(email, password) {
     return json.secret;
 }
 
+async function register(secret, name) {
+    console.log('registering device...');
+
+    const parameters = {
+        secret: secret,
+        name: name,
+        os: 'O',
+    };
+
+    const json = await retryFetch(api_url + '/devices.json', {
+        method: 'post',
+        body: new URLSearchParams(parameters),
+    }).then(res => res.json());
+    check(json);
+
+    return json.id;
+}
+
 async function main() {
     const email = process.env['EMAIL'];
     const password = process.env['PASSWORD'];
     const secret = process.env['SECRET'] || await login(email, password);
 
     console.log(`secret = ${secret}`);
+
+    const name = process.env['NAME'];
+    const id = process.env['ID'] || await register(secret, name);
+
+    console.log(`id = ${id}`);
 }
 
 main();
