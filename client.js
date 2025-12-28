@@ -77,8 +77,10 @@ async function downloadMessages(secret, id) {
 
 async function deleteMessages(secret, id, messages) {
     console.log('deleting messages...');
+    if (!messages.length) return;
 
-    const highest_message = Math.max(...messages.map(message => message.id));
+    const message_ids = messages.map(message => BigInt(message.id_str));
+    const highest_message = message_ids.reduce((max, n) => n > max ? n : max);
 
     const parameters = {
         secret: secret,
