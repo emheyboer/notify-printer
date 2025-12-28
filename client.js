@@ -2,6 +2,15 @@
 require('dotenv').config({quiet: true});
 
 const api_url = 'https://api.pushover.net/1';
+const websocket_url = 'wss://client.pushover.net/push';
+
+const Frame = {
+    KeepAlive: '#',
+    NewMessage: '!',
+    Reload: 'R',
+    PermanentError: 'E',
+    OtherSessionLoggedIn: 'A', 
+}
 
 function check(response) {
     if (response.status == 1) {
@@ -60,8 +69,6 @@ async function register(secret, name) {
 }
 
 async function downloadMessages(secret, id) {
-    console.log('downloading messages...');
-
     const parameters = {
         secret: secret,
         device_id: id,
@@ -76,7 +83,6 @@ async function downloadMessages(secret, id) {
 }
 
 async function deleteMessages(secret, id, messages) {
-    console.log('deleting messages...');
     if (!messages.length) return;
 
     const message_ids = messages.map(message => BigInt(message.id_str));
@@ -94,19 +100,55 @@ async function deleteMessages(secret, id, messages) {
     check(json);
 }
 
-async function main() {
-    const email = process.env['EMAIL'];
-    const password = process.env['PASSWORD'];
-    const secret = process.env['SECRET'] || await login(email, password);
+function listenForMessages(secret, id) {
+    console.log('listening for messages...');
 
-    console.log(`secret = ${secret}`);
+    const socket = new WebSocket(websocket_url);
 
-    const name = process.env['NAME'];
-    const id = process.env['ID'] || await register(secret, name);
+    socket.addEventListener('open', event => {
+        socket.send(`login:${id}:${secret}\n`);
+    });
 
-    console.log(`id = ${id}`);
+    socket.addEventListener('message', async event => {
+        const frame_type = await event.data.text();
 
+        switch (frame_type) {
+            case Frame.KeepAlive:
+                break;
+            case Frame.NewMessage:
+                onNewMessage(secret, id);
+                break;
+            case Frame.Reload:
+                console.log('reconnecting...');
+                socket.close();
+                listenForMessages(secret, id);
+                break;
+            case Frame.PermanentError:
+            case Frame.OtherSessionLoggedIn:
+                console.log('disconnecting...');
+                socket.close();
+                break;
+        }
+    });
+
+    socket.addEventListener('close', event => {
+        console.log('connection closed');
+    });
+
+    socket.addEventListener('error', error => {
+        console.error(`error: ${error}`);
+    });
+}
+
+async function clearMessageQueue(secret, id) {
+    console.log('clearing message queue...');
     const messages = await downloadMessages(secret, id);
+    await deleteMessages(secret, id, messages);
+}
+
+async function onNewMessage(secret, id) {
+    const messages = await downloadMessages(secret, id);
+    await deleteMessages(secret, id, messages);
 
     messages.forEach(message => {
         console.log();
@@ -114,8 +156,19 @@ async function main() {
         console.log('-'.repeat(60));
         console.log(message.message);
     });
+}
 
-    await deleteMessages(secret, id, messages);
+async function main() {
+    const email = process.env['EMAIL'];
+    const password = process.env['PASSWORD'];
+    const secret = process.env['SECRET'] || await login(email, password);
+
+    const name = process.env['NAME'];
+    const id = process.env['ID'] || await register(secret, name);
+
+    await clearMessageQueue(secret, id);
+
+    listenForMessages(secret, id);
 }
 
 main();
