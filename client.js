@@ -75,6 +75,23 @@ async function downloadMessages(secret, id) {
     return json.messages;
 }
 
+async function deleteMessages(secret, id, messages) {
+    console.log('deleting messages...');
+
+    const highest_message = Math.max(...messages.map(message => message.id));
+
+    const parameters = {
+        secret: secret,
+        message: highest_message,
+    };
+
+    const json = await retryFetch(api_url + `/devices/${id}/update_highest_message.json`, {
+        method: 'post',
+        body: new URLSearchParams(parameters),
+    }).then(res => res.json());
+    check(json);
+}
+
 async function main() {
     const email = process.env['EMAIL'];
     const password = process.env['PASSWORD'];
@@ -95,6 +112,8 @@ async function main() {
         console.log('-'.repeat(60));
         console.log(message.message);
     });
+
+    await deleteMessages(secret, id, messages);
 }
 
 main();
