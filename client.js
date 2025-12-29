@@ -19,10 +19,9 @@ function check(response) {
     if (response.status == 1) {
         return;
     }
-    response.errors.forEach(error => {
+    response.errors && response.errors.forEach(error => {
         console.error(`error (status = ${response.status}): ${error}`);
     })
-    console.log('shutting down...');
     process.exit();
 }
 
@@ -36,12 +35,12 @@ function retryFetch(resource, options, backoff = 500) {
     return fetch(resource, options).catch(onError);
 }
 
-async function login(email, password) {
+async function login(config) {
     console.log('logging in...');
 
     const parameters = {
-        email: email,
-        password: password,
+        email: config.email,
+        password: config.password,
     };
 
     const json = await retryFetch(api_url + '/users/login.json', {
@@ -58,12 +57,12 @@ async function login(email, password) {
     return json.secret;
 }
 
-async function register(secret, name) {
+async function register(config) {
     console.log('registering device...');
 
     const parameters = {
-        secret: secret,
-        name: name,
+        secret: config.secret,
+        name: config.name,
         os: 'O',
     };
 
@@ -81,10 +80,10 @@ async function register(secret, name) {
     return json.id;
 }
 
-async function downloadMessages(secret, id) {
+async function getMessages(config) {
     const parameters = {
-        secret: secret,
-        device_id: id,
+        secret: config.secret,
+        device_id: config.id,
     };
 
     const json = await retryFetch(api_url + '/messages.json?' + new URLSearchParams(parameters), {
@@ -98,18 +97,18 @@ async function downloadMessages(secret, id) {
     return json.messages;
 }
 
-async function deleteMessages(secret, id, messages) {
+async function deleteMessages(config, messages) {
     if (!messages.length) return;
 
     const message_ids = messages.map(message => BigInt(message.id_str));
     const highest_message = message_ids.reduce((max, n) => n > max ? n : max);
 
     const parameters = {
-        secret: secret,
+        secret: config.secret,
         message: highest_message,
     };
 
-    const json = await retryFetch(api_url + `/devices/${id}/update_highest_message.json`, {
+    const json = await retryFetch(api_url + `/devices/${config.id}/update_highest_message.json`, {
         method: 'post',
         headers: {
             'User-Agent': user_agent,
@@ -119,13 +118,13 @@ async function deleteMessages(secret, id, messages) {
     check(json);
 }
 
-function listenForMessages(secret, id) {
+function listenForMessages(config) {
     console.log('listening for messages...');
 
     const socket = new WebSocket(websocket_url);
 
     socket.addEventListener('open', event => {
-        socket.send(`login:${id}:${secret}\n`);
+        socket.send(`login:${config.id}:${config.secret}\n`);
     });
 
     socket.addEventListener('message', async event => {
@@ -135,12 +134,12 @@ function listenForMessages(secret, id) {
             case Frame.KeepAlive:
                 break;
             case Frame.NewMessage:
-                onNewMessage(secret, id);
+                onNewMessage(config);
                 break;
             case Frame.Reload:
                 console.log('reconnecting...');
                 socket.close();
-                listenForMessages(secret, id);
+                listenForMessages(config);
                 break;
             case Frame.PermanentError:
             case Frame.OtherSessionLoggedIn:
@@ -159,15 +158,15 @@ function listenForMessages(secret, id) {
     });
 }
 
-async function clearMessageQueue(secret, id) {
+async function clearMessageQueue(config) {
     console.log('clearing message queue...');
-    const messages = await downloadMessages(secret, id);
-    await deleteMessages(secret, id, messages);
+    const messages = await getMessages(config);
+    await deleteMessages(config, messages);
 }
 
-async function onNewMessage(secret, id) {
-    const messages = await downloadMessages(secret, id);
-    await deleteMessages(secret, id, messages);
+async function onNewMessage(config) {
+    const messages = await getMessages(config);
+    await deleteMessages(config, messages);
 
     messages.forEach(message => {
         const title = message.title ?? message.app;
@@ -176,7 +175,7 @@ async function onNewMessage(secret, id) {
         console.log('-'.repeat(60));
         console.log(message.message);
 
-        const child = spawn('lp', ['-d', process.env['PRINTER'], '-o', 'raw']);
+        const child = spawn('lp', ['-d', config.printer, '-o', 'raw']);
         const printed = `${' '.repeat(80)}\n${title}\n${message.message}${'\n'.repeat(3)}`;
         child.stdin.write(printed);
         child.stdin.end();
@@ -184,16 +183,18 @@ async function onNewMessage(secret, id) {
 }
 
 async function main() {
-    const email = process.env['EMAIL'];
-    const password = process.env['PASSWORD'];
-    const secret = process.env['SECRET'] || await login(email, password);
+    const config = {
+        email: process.env['EMAIL'],
+        password: process.env['PASSWORD'],
+        name: process.env['NAME'],
+        printer: process.env['PRINTER'],
+    }
+    config.secret = process.env['SECRET'] || await login(config);
+    config.id = process.env['ID'] || await register(config);
 
-    const name = process.env['NAME'];
-    const id = process.env['ID'] || await register(secret, name);
+    await clearMessageQueue(config);
 
-    await clearMessageQueue(secret, id);
-
-    listenForMessages(secret, id);
+    listenForMessages(config);
 }
 
 main();
