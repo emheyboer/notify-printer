@@ -2,6 +2,7 @@
 require('dotenv').config({quiet: true});
 const fs = require('fs');
 const spawn = require('child_process').spawn;
+const {JSDOM} = require("jsdom");
 
 const api_url = 'https://api.pushover.net/1';
 const websocket_url = 'wss://client.pushover.net/push';
@@ -169,17 +170,40 @@ async function onNewMessage(config) {
     await deleteMessages(config, messages);
 
     messages.forEach(message => {
-        const title = message.title ?? message.app;
+        const formatted = formatMessage(message);
         console.log();
-        console.log(title);
-        console.log('-'.repeat(60));
-        console.log(message.message);
+        console.log(formatted);
 
         const child = spawn('lp', ['-d', config.printer, '-o', 'raw']);
-        const printed = `${' '.repeat(80)}\n${title}\n${message.message}${'\n'.repeat(3)}`;
+        const printed = `${' '.repeat(80)}\n${formatted}${'\n'.repeat(3)}`;
         child.stdin.write(printed);
         child.stdin.end();
     });
+}
+
+function formatMessage(message) {
+    const title = message.title ?? message.app;
+    let body = message.message;
+
+    if (message.html == 1) {
+        const {document} = new JSDOM(message.message).window;
+        body = document.body.textContent ?? body;
+    }
+
+    if (message.url) {
+        body += '\n' + message.url;
+    }
+
+    // the common page contains only characters 0-127
+    body = body.split('').filter(char => char.charCodeAt() <= 127).join('');
+
+    // remove leading and trailing whitespace
+    body = body.trim().split('\n').map(line => line.trim()).join('\n');
+
+    // collapse whitespace
+    body = body.replaceAll('\t', ' ').replaceAll(/ {2,}/g, ' ');
+
+    return `${title}\n${body}`;
 }
 
 async function main() {
