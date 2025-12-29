@@ -21,9 +21,9 @@ function check(response) {
         return;
     }
     response.errors && response.errors.forEach(error => {
-        console.error(`error (status = ${response.status}): ${error}`);
-    })
-    process.exit();
+        console.error(`error (status = ${response.status}):`, error);
+    });
+    process.exit(response.status);
 }
 
 function retryFetch(resource, options, backoff = 500) {
@@ -155,7 +155,11 @@ function listenForMessages(config) {
     });
 
     socket.addEventListener('error', error => {
-        console.error(`error: ${error}`);
+        console.error('error:', error);
+        
+        console.log('reconnecting...');
+        socket.close();
+        listenForMessages(config);
     });
 }
 
