@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 require('dotenv').config({quiet: true});
+const spawn = require('child_process').spawn;
 
 const api_url = 'https://api.pushover.net/1';
 const websocket_url = 'wss://client.pushover.net/push';
@@ -151,10 +152,16 @@ async function onNewMessage(secret, id) {
     await deleteMessages(secret, id, messages);
 
     messages.forEach(message => {
+        const title = message.title ?? message.app;
         console.log();
-        console.log(message.title ?? message.app);
+        console.log(title);
         console.log('-'.repeat(60));
         console.log(message.message);
+
+        const child = spawn('lp', ['-d', process.env['PRINTER'], '-o', 'raw']);
+        const printed = `${' '.repeat(80)}\n${title}\n${message.message}${'\n'.repeat(3)}`;
+        child.stdin.write(printed);
+        child.stdin.end();
     });
 }
 
