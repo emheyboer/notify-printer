@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 require('dotenv').config({quiet: true});
+const fs = require('fs');
 const spawn = require('child_process').spawn;
 
 const api_url = 'https://api.pushover.net/1';
@@ -48,6 +49,8 @@ async function login(email, password) {
     }).then(res => res.json());
     check(json);
 
+    fs.appendFileSync('.env', `\nSECRET=${json.secret}`);
+
     return json.secret;
 }
 
@@ -65,6 +68,8 @@ async function register(secret, name) {
         body: new URLSearchParams(parameters),
     }).then(res => res.json());
     check(json);
+
+    fs.appendFileSync('.env', `\nID=${json.id}\n`);
 
     return json.id;
 }
