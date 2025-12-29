@@ -5,6 +5,7 @@ const spawn = require('child_process').spawn;
 
 const api_url = 'https://api.pushover.net/1';
 const websocket_url = 'wss://client.pushover.net/push';
+const user_agent = 'notify-printer';
 
 const Frame = {
     KeepAlive: '#',
@@ -45,6 +46,9 @@ async function login(email, password) {
 
     const json = await retryFetch(api_url + '/users/login.json', {
         method: 'post',
+        headers: {
+            'User-Agent': user_agent,
+        },
         body: new URLSearchParams(parameters),
     }).then(res => res.json());
     check(json);
@@ -65,6 +69,9 @@ async function register(secret, name) {
 
     const json = await retryFetch(api_url + '/devices.json', {
         method: 'post',
+        headers: {
+            'User-Agent': user_agent,
+        },
         body: new URLSearchParams(parameters),
     }).then(res => res.json());
     check(json);
@@ -82,6 +89,9 @@ async function downloadMessages(secret, id) {
 
     const json = await retryFetch(api_url + '/messages.json?' + new URLSearchParams(parameters), {
         method: 'get',
+        headers: {
+            'User-Agent': user_agent,
+        },
     }).then(res => res.json());
     check(json);
 
@@ -101,6 +111,9 @@ async function deleteMessages(secret, id, messages) {
 
     const json = await retryFetch(api_url + `/devices/${id}/update_highest_message.json`, {
         method: 'post',
+        headers: {
+            'User-Agent': user_agent,
+        },
         body: new URLSearchParams(parameters),
     }).then(res => res.json());
     check(json);
