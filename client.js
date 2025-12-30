@@ -122,6 +122,21 @@ async function deleteMessages(config, messages) {
 function listenForMessages(config) {
     console.log('listening for messages...');
 
+    let reconnect = true;
+
+    let last_keep_alive = new Date();
+    let health_check_timeout;
+    function health_check() {
+        const delay = 60*1000;
+        if (new Date() - last_keep_alive > delay) {
+            console.log('disconnecting (reason = expired keep-alive)...');
+            socket.close();
+        } else {
+            health_check_timeout = setTimeout(health_check, delay);
+        }
+    }
+    health_check();
+
     const socket = new WebSocket(websocket_url);
 
     socket.addEventListener('open', event => {
@@ -133,33 +148,39 @@ function listenForMessages(config) {
 
         switch (frame_type) {
             case Frame.KeepAlive:
+                last_keep_alive = new Date();
                 break;
             case Frame.NewMessage:
                 onNewMessage(config);
                 break;
             case Frame.Reload:
-                console.log('reconnecting...');
                 socket.close();
-                listenForMessages(config);
                 break;
             case Frame.PermanentError:
             case Frame.OtherSessionLoggedIn:
-                console.log('disconnecting...');
+                console.log(`disconnecting (reason = ${frame_type})...`);
+                reconnect = false;
                 socket.close();
                 break;
         }
     });
 
     socket.addEventListener('close', event => {
-        console.log('connection closed');
+        console.log('disconnected');
+        clearTimeout(health_check_timeout);
+
+        if (reconnect) {
+            const delay = 5;
+            console.log(`reconnecting in ${delay}s...`);
+            setTimeout(() => listenForMessages(config), delay * 1000);
+        } else {
+            sendToPrinter(config, 'printer disconnected\nplease resolve errors before reconnecting');
+        }
     });
 
     socket.addEventListener('error', error => {
         console.error('error:', error);
-        
-        console.log('reconnecting...');
         socket.close();
-        listenForMessages(config);
     });
 }
 
@@ -177,12 +198,14 @@ async function onNewMessage(config) {
         const formatted = formatMessage(message);
         console.log();
         console.log(formatted);
-
-        const child = spawn('lp', ['-d', config.printer, '-o', 'raw']);
-        const printed = `${' '.repeat(80)}\n${formatted}${'\n'.repeat(3)}`;
-        child.stdin.write(printed);
-        child.stdin.end();
+        sendToPrinter(config, formatted);
     });
+}
+
+function sendToPrinter(config, text) {
+    const child = spawn('lp', ['-d', config.printer, '-o', 'raw']);
+    child.stdin.write(`${' '.repeat(80)}\n${text}${'\n'.repeat(3)}`);
+    child.stdin.end();
 }
 
 function formatMessage(message) {
