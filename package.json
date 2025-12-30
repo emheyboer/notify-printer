@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@point-of-sale/receipt-printer-encoder": "^3.0.3",
     "dotenv": "^17.2.3",
     "jsdom": "^27.4.0"
   }

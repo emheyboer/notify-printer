@@ -3,6 +3,7 @@ require('dotenv').config({quiet: true});
 const fs = require('fs');
 const spawn = require('child_process').spawn;
 const {JSDOM} = require("jsdom");
+const ReceiptPrinterEncoder = require('@point-of-sale/receipt-printer-encoder')
 
 const api_url = 'https://api.pushover.net/1';
 const websocket_url = 'wss://client.pushover.net/push';
@@ -195,34 +196,42 @@ async function onNewMessage(config) {
     await deleteMessages(config, messages);
 
     messages.forEach(message => {
-        const formatted = formatMessage(message);
+        const {text, encoder} = formatMessage(config, message);
         console.log();
-        console.log(formatted);
-        sendToPrinter(config, formatted);
+        console.log(text);
+        sendToPrinter(config, encoder);
     });
 }
 
-function sendToPrinter(config, text) {
+function sendToPrinter(config, data) {
+    if (typeof data == 'string') {
+        data = new ReceiptPrinterEncoder(config.printer_config)
+            .initialize()
+            .codepage('auto')
+            .line(data);
+    }
+
     const child = spawn('lp', ['-d', config.printer, '-o', 'raw']);
-    child.stdin.write(`${' '.repeat(80)}\n${text}${'\n'.repeat(3)}`);
+    child.stdin.write(' '.repeat(80) + '\n');
+    child.stdin.write(data.cut().encode());
     child.stdin.end();
 }
 
-function formatMessage(message) {
+function formatMessage(config, message) {
     const title = message.title ?? message.app;
-    let body = message.message;
+    let text = title;
+    const encoder = new ReceiptPrinterEncoder(config.printer_config)
+        .initialize()
+        .codepage('auto')
+        .bold(true)
+        .line(title)
+        .bold(false);
 
+    let body = message.message;
     if (message.html == 1) {
         const {document} = new JSDOM(message.message).window;
         body = document.body.textContent ?? body;
     }
-
-    if (message.url) {
-        body += '\n' + message.url;
-    }
-
-    // the common page contains only characters 0-127
-    body = body.split('').filter(char => char.charCodeAt() <= 127).join('');
 
     // remove leading and trailing whitespace
     body = body.trim().split('\n').map(line => line.trim()).join('\n');
@@ -230,7 +239,21 @@ function formatMessage(message) {
     // collapse whitespace
     body = body.replaceAll('\t', ' ').replaceAll(/ {2,}/g, ' ');
 
-    return `${title}\n${body}`;
+    text += '\n' + body;
+    encoder.line(body);
+
+    if (message.url) {
+        if (message.url_title) {
+            text += '\n' + message.url_title;
+            encoder.line(message.url_title);
+        } else {
+            encoder.line(message.url);
+        }
+        text += '\n' + message.url;
+        encoder.qrcode(message.url)
+    }
+
+    return {text, encoder};
 }
 
 async function main() {
@@ -239,6 +262,10 @@ async function main() {
         password: process.env['PASSWORD'],
         name: process.env['NAME'],
         printer: process.env['PRINTER'],
+        printer_config: {
+            columns: 35,
+            feedBeforeCut: 2,
+        }
     }
     config.secret = process.env['SECRET'] || await login(config);
     config.id = process.env['ID'] || await register(config);
