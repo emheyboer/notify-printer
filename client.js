@@ -155,11 +155,16 @@ function listenForMessages(config) {
                 onNewMessage(config);
                 break;
             case Frame.Reload:
+                console.log('disconnecting (reason = reload request)...');
                 socket.close();
                 break;
             case Frame.PermanentError:
+                console.log('disconnecting (reason = permanent error)...');
+                reconnect = false;
+                socket.close();
+                break;
             case Frame.OtherSessionLoggedIn:
-                console.log(`disconnecting (reason = ${frame_type})...`);
+                console.log('disconnecting (reason = other session logged in)...');
                 reconnect = false;
                 socket.close();
                 break;
@@ -167,7 +172,6 @@ function listenForMessages(config) {
     });
 
     socket.addEventListener('close', event => {
-        console.log('disconnected');
         clearTimeout(health_check_timeout);
 
         if (reconnect) {
@@ -175,12 +179,14 @@ function listenForMessages(config) {
             console.log(`reconnecting in ${delay}s...`);
             setTimeout(() => listenForMessages(config), delay * 1000);
         } else {
-            sendToPrinter(config, 'printer disconnected\nplease resolve errors before reconnecting');
+            const message = 'printer disconnected\nplease resolve errors before reconnecting';
+            console.log(message);
+            sendToPrinter(config, message);
         }
     });
 
     socket.addEventListener('error', error => {
-        console.error('error:', error);
+        console.error(`disconnecting (reason = ${error.message || 'connection error'})...`);
         socket.close();
     });
 }
