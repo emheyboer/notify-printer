@@ -249,6 +249,7 @@ function formatMessage(config, message) {
     encoder.line(body);
 
     if (message.url) {
+        encoder.qrcode(message.url)
         if (message.url_title) {
             text += '\n' + message.url_title;
             encoder.line(message.url_title);
@@ -256,7 +257,6 @@ function formatMessage(config, message) {
             encoder.line(message.url);
         }
         text += '\n' + message.url;
-        encoder.qrcode(message.url)
     }
 
     return {text, encoder};
@@ -269,7 +269,7 @@ async function main() {
         name: process.env['NAME'],
         printer: process.env['PRINTER'],
         printer_config: {
-            columns: 35,
+            columns: 32,
             feedBeforeCut: 2,
         }
     }
