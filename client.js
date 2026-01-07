@@ -266,7 +266,7 @@ async function main() {
     const config = {
         email: process.env['EMAIL'],
         password: process.env['PASSWORD'],
-        name: process.env['NAME'],
+        name: process.env['DEVICE_NAME'],
         printer: process.env['PRINTER'],
         printer_config: {
             columns: 32,
