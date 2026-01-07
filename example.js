@@ -8,6 +8,7 @@ const parameters = {
     url: 'https://example.com',
     url_title: 'example url',
     device: process.env['DEVICE_NAME'],
+    priority: 0,
 };
 
 fetch('https://api.pushover.net/1/messages.json', {

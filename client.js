@@ -7,7 +7,6 @@ const ReceiptPrinterEncoder = require('@point-of-sale/receipt-printer-encoder')
 
 const api_url = 'https://api.pushover.net/1';
 const websocket_url = 'wss://client.pushover.net/push';
-const user_agent = 'notify-printer';
 
 const Frame = {
     KeepAlive: '#',
@@ -48,7 +47,7 @@ async function login(config) {
     const json = await retryFetch(api_url + '/users/login.json', {
         method: 'post',
         headers: {
-            'User-Agent': user_agent,
+            'User-Agent': config.user_agent,
         },
         body: new URLSearchParams(parameters),
     }).then(res => res.json());
@@ -71,7 +70,7 @@ async function register(config) {
     const json = await retryFetch(api_url + '/devices.json', {
         method: 'post',
         headers: {
-            'User-Agent': user_agent,
+            'User-Agent': config.user_agent,
         },
         body: new URLSearchParams(parameters),
     }).then(res => res.json());
@@ -91,7 +90,7 @@ async function getMessages(config) {
     const json = await retryFetch(api_url + '/messages.json?' + new URLSearchParams(parameters), {
         method: 'get',
         headers: {
-            'User-Agent': user_agent,
+            'User-Agent': config.user_agent,
         },
     }).then(res => res.json());
     check(json);
@@ -113,7 +112,7 @@ async function deleteMessages(config, messages) {
     const json = await retryFetch(api_url + `/devices/${config.id}/update_highest_message.json`, {
         method: 'post',
         headers: {
-            'User-Agent': user_agent,
+            'User-Agent': config.user_agent,
         },
         body: new URLSearchParams(parameters),
     }).then(res => res.json());
@@ -202,6 +201,8 @@ async function onNewMessage(config) {
     await deleteMessages(config, messages);
 
     messages.forEach(message => {
+        if (message.priority < config.min_priority) return;
+
         const {text, encoder} = formatMessage(config, message);
         console.log();
         console.log(text);
@@ -271,7 +272,9 @@ async function main() {
         printer_config: {
             columns: 32,
             feedBeforeCut: 2,
-        }
+        },
+        user_agent: 'notify-printer',
+        min_priority: process.env['MIN_PRIORITY'] ?? -Infinity,
     }
     config.secret = process.env['SECRET'] || await login(config);
     config.id = process.env['ID'] || await register(config);
