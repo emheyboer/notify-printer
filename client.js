@@ -3,7 +3,7 @@ require('dotenv').config({quiet: true});
 const fs = require('fs');
 const spawn = require('child_process').spawn;
 const {JSDOM} = require("jsdom");
-const ReceiptPrinterEncoder = require('@point-of-sale/receipt-printer-encoder')
+const ReceiptPrinterEncoder = require('@point-of-sale/receipt-printer-encoder');
 
 const api_url = 'https://api.pushover.net/1';
 const websocket_url = 'wss://client.pushover.net/push';
@@ -232,22 +232,25 @@ function formatMessage(config, message) {
         .codepage('auto')
         .bold(true)
         .line(title)
+        .rule()
         .bold(false);
 
     let body = message.message;
     if (message.html == 1) {
         const {document} = new JSDOM(message.message).window;
-        body = document.body.textContent ?? body;
+        text += '\n' + document.body.textContent ?? body;
+        formatHTML(encoder, document);
+        encoder.newline();
+    } else {
+        // remove leading and trailing whitespace
+        body = body.trim().split('\n').map(line => line.trim()).join('\n');
+
+        // collapse whitespace
+        body = body.replaceAll('\t', ' ').replaceAll(/ {2,}/g, ' ');
+
+        text += '\n' + body;
+        encoder.line(body);
     }
-
-    // remove leading and trailing whitespace
-    body = body.trim().split('\n').map(line => line.trim()).join('\n');
-
-    // collapse whitespace
-    body = body.replaceAll('\t', ' ').replaceAll(/ {2,}/g, ' ');
-
-    text += '\n' + body;
-    encoder.line(body);
 
     if (message.url) {
         encoder.qrcode(message.url)
@@ -261,6 +264,48 @@ function formatMessage(config, message) {
     }
 
     return {text, encoder};
+}
+
+function formatHTML(encoder, element) {
+    let operator;
+    switch (element.nodeName) {
+        case 'B':
+            operator = 'bold';
+            break;
+        case 'I': // italics aren't supported by most printers
+            operator = 'italic';
+            break;
+        case 'U':
+            operator = 'underline';
+            break;
+        case 'FONT': // instead of attempting to apply a font color, we just switch to white-on-black
+            if (element.color && element.color != '#000000') {
+                operator = 'invert';
+            }  
+            break;
+        case 'A':
+            encoder.qrcode(element.href);
+            break;
+        case '#text':
+            const lines = element.textContent.split('\n');
+            lines.forEach((line, index) => {
+                // encoder will flush on an empty line
+                if (index == lines.length - 1) {
+                    if (line) encoder.text(line);
+                } else if (line) {
+                    encoder.line(line);
+                } else {
+                    encoder.newline();
+                }
+            })
+            break;
+    }
+
+    if (operator) encoder[operator](true);
+    Array.from(element.childNodes).forEach(child =>
+        formatHTML(encoder, child)
+    );
+    if (operator) encoder[operator](false);
 }
 
 async function main() {
