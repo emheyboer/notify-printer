@@ -267,24 +267,68 @@ function formatMessage(config, message) {
 }
 
 function formatHTML(encoder, element) {
-    let operator;
+    let after;
     switch (element.nodeName) {
+        case 'STRONG':
         case 'B':
-            operator = 'bold';
+            encoder.bold(true);
+            after = encoder => encoder.bold(false);
             break;
+        case 'EM':
         case 'I': // italics aren't supported by most printers
-            operator = 'italic';
+            encoder.italic(true);
+            after = encoder => encoder.italic(false);
             break;
         case 'U':
-            operator = 'underline';
+            encoder.underline(true);
+            after = encoder => encoder.underline(false);
             break;
         case 'FONT': // instead of attempting to apply a font color, we just switch to white-on-black
             if (element.color && element.color != '#000000') {
-                operator = 'invert';
+                encoder.invert(true);
+                after = encoder => encoder.invert(false);
             }  
+            break;
+        case 'MARK':
+            encoder.invert(true);
+            after = encoder => encoder.invert(false);
             break;
         case 'A':
             encoder.qrcode(element.href);
+            break;
+        case 'HR':
+            encoder.rule();
+            break;
+        case 'BR':
+            encoder.newline();
+            break;
+        case 'LI':
+            encoder.text(' - ');
+            break;
+        case 'CENTER':
+            encoder.align('center');
+            after = encoder => encoder.align('left');
+            break;
+        case 'H1':
+            encoder.size(4,4);
+            after = encoder => encoder.size(1, 1);
+            break;
+        case 'H2':
+            encoder.size(3,3);
+            after = encoder => encoder.size(1, 1);
+            break;
+        case 'H3':
+        case 'BIG':
+            encoder.size(2,2);
+            after = encoder => encoder.size(1, 1);
+            break;
+        case 'Q':
+            encoder.text('"');
+            after = encoder => encoder.text('"');
+            break;
+        case 'BLOCKQUOTE':
+            encoder.align('center').text('"');
+            after = encoder => encoder.text('"').align('left');
             break;
         case '#text':
             const lines = element.textContent.split('\n');
@@ -301,11 +345,10 @@ function formatHTML(encoder, element) {
             break;
     }
 
-    if (operator) encoder[operator](true);
     Array.from(element.childNodes).forEach(child =>
         formatHTML(encoder, child)
     );
-    if (operator) encoder[operator](false);
+    if (after) after(encoder);
 }
 
 async function main() {
