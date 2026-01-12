@@ -202,7 +202,7 @@ async function onNewMessage(config) {
 
         const {text, encoder} = await formatMessage(config, message);
         console.log();
-        console.log(text);
+        console.log(JSON.stringify(text));
         sendToPrinter(config, encoder);
     }
 }
