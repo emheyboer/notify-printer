@@ -5,7 +5,7 @@
     "jsdom": "^27.4.0"
   },
   "scripts": {
-    "start": "node client.js",
+    "start": "node client.js | tee stdout.log",
     "notify": "node notify.js"
   }
 }
