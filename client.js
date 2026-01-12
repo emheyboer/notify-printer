@@ -3,6 +3,7 @@ const fs = require('fs');
 const spawn = require('child_process').spawn;
 const {JSDOM} = require("jsdom");
 const ReceiptPrinterEncoder = require('@point-of-sale/receipt-printer-encoder');
+const { createCanvas, loadImage } = require('canvas');
 const config = require('./config.json');
 
 const api_url = 'https://api.pushover.net/1';
@@ -196,14 +197,14 @@ async function onNewMessage(config) {
     const messages = await getMessages(config);
     await deleteMessages(config, messages);
 
-    messages.forEach(message => {
+    for (let message of messages) {
         if (!isNaN(config.min_priority) && message.priority < config.min_priority) return;
 
-        const {text, encoder} = formatMessage(config, message);
+        const {text, encoder} = await formatMessage(config, message);
         console.log();
         console.log(text);
         sendToPrinter(config, encoder);
-    });
+    }
 }
 
 function sendToPrinter(config, data) {
@@ -220,7 +221,7 @@ function sendToPrinter(config, data) {
     child.stdin.end();
 }
 
-function formatMessage(config, message) {
+async function formatMessage(config, message) {
     const title = message.title ?? message.app;
     let text = title;
     const encoder = new ReceiptPrinterEncoder(config.printer_config)
@@ -235,7 +236,7 @@ function formatMessage(config, message) {
     if (message.html == 1) {
         const {document} = new JSDOM(message.message).window;
         text += '\n' + document.body.textContent ?? body;
-        formatHTML(encoder, document);
+        await formatHTML(encoder, document);
         encoder.newline();
     } else {
         // remove leading and trailing whitespace
@@ -262,7 +263,7 @@ function formatMessage(config, message) {
     return {text, encoder};
 }
 
-function formatHTML(encoder, element) {
+async function formatHTML(encoder, element) {
     let after;
     switch (element.nodeName) {
         case 'STRONG':
@@ -326,6 +327,16 @@ function formatHTML(encoder, element) {
             encoder.align('center').text('"');
             after = encoder => encoder.text('"').align('left');
             break;
+        case 'IMG':
+            const src = element.src;
+            if (!src) break;
+            try {
+                const image = await loadImage(src);
+                encoder.image(image, ...resize(image.width, image.height), 'atkinson');
+            } catch {
+                encoder.qrcode(src);
+            }
+            break;
         case '#text':
             const lines = element.textContent.split('\n');
             lines.forEach((line, index) => {
@@ -341,13 +352,34 @@ function formatHTML(encoder, element) {
             break;
     }
 
-    Array.from(element.childNodes).forEach(child =>
-        formatHTML(encoder, child)
-    );
+    const children = Array.from(element.childNodes);
+    for (let child of children) {
+        await formatHTML(encoder, child);
+    }
     if (after) after(encoder);
 }
 
+function resize(width, height) {
+    const initial_width = width;
+
+    // font A is 12 pixels, so we do 12 * # of columns to get the width in pixels
+    const paper_width = config.printer_config.columns * 12;
+
+    // resize to fit on the paper
+    width = Math.min(width, paper_width);
+    const scale = width / initial_width;
+    height *= scale;
+
+    // sizes must be a multiple of 8 pixels
+    width = Math.round(width / 8) * 8;
+    height = Math.round(height / 8) * 8;
+
+    return [width, height]
+}
+
 async function main() {
+    config.printer_config.createCanvas = createCanvas;
+    
     config.pushover.secret ??= await login(config);
     config.pushover.id ??= await register(config);
 
