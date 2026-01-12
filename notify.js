@@ -1,13 +1,13 @@
-require('dotenv').config({quiet: true});
+const config = require('./config.json');
 
 const parameters = {
-    token: process.env['TOKEN'],
-    user: process.env['USER_KEY'],
+    token: config.pushover.token,
+    user: config.pushover.user_key,
     title: 'title',
     message: 'message with <b>bold</b>, <u>underlined</u>, and <font color="#ffffff">inverted</font> text',
     url: 'https://example.com',
     url_title: 'example url',
-    device: process.env['DEVICE_NAME'],
+    device: config.pushover.device_name,
     priority: 0,
     html: 1,
 };

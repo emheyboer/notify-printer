@@ -1,0 +1,16 @@
+{
+  "pushover": {
+    "email": "can be removed after initial registration",
+    "password": "can be removed after initial registration",
+    "device_name": "e.g. 'printer'",
+    "token": "(optional) app token for notify.js",
+    "user_key": "(optional) user key for notify.js"
+  },
+  "printer": "printer's name (shown via `lpstat -v`)",
+  "min_priority": "(optional) notifications with a priority below MIN_PRIORITY will be ignored",
+  "printer_config": {
+    "columns": 32,
+    "feedBeforeCut": 2
+  },
+  "user_agent": "notify-printer"
+}

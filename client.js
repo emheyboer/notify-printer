@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-require('dotenv').config({quiet: true});
 const fs = require('fs');
 const spawn = require('child_process').spawn;
 const {JSDOM} = require("jsdom");
 const ReceiptPrinterEncoder = require('@point-of-sale/receipt-printer-encoder');
+const config = require('./config.json');
 
 const api_url = 'https://api.pushover.net/1';
 const websocket_url = 'wss://client.pushover.net/push';
@@ -53,8 +53,6 @@ async function login(config) {
     }).then(res => res.json());
     check(json);
 
-    fs.appendFileSync('.env', `\nSECRET=${json.secret}`);
-
     return json.secret;
 }
 
@@ -62,8 +60,8 @@ async function register(config) {
     console.log('registering device...');
 
     const parameters = {
-        secret: config.secret,
-        name: config.name,
+        secret: config.pushover.secret,
+        name: config.pushover.device_name,
         os: 'O',
     };
 
@@ -76,15 +74,13 @@ async function register(config) {
     }).then(res => res.json());
     check(json);
 
-    fs.appendFileSync('.env', `\nID=${json.id}\n`);
-
     return json.id;
 }
 
 async function getMessages(config) {
     const parameters = {
-        secret: config.secret,
-        device_id: config.id,
+        secret: config.pushover.secret,
+        device_id: config.pushover.id,
     };
 
     const json = await retryFetch(api_url + '/messages.json?' + new URLSearchParams(parameters), {
@@ -105,11 +101,11 @@ async function deleteMessages(config, messages) {
     const highest_message = message_ids.reduce((max, n) => n > max ? n : max);
 
     const parameters = {
-        secret: config.secret,
+        secret: config.pushover.secret,
         message: highest_message,
     };
 
-    const json = await retryFetch(api_url + `/devices/${config.id}/update_highest_message.json`, {
+    const json = await retryFetch(api_url + `/devices/${config.pushover.id}/update_highest_message.json`, {
         method: 'post',
         headers: {
             'User-Agent': config.user_agent,
@@ -140,7 +136,7 @@ function listenForMessages(config) {
     const socket = new WebSocket(websocket_url);
 
     socket.addEventListener('open', event => {
-        socket.send(`login:${config.id}:${config.secret}\n`);
+        socket.send(`login:${config.pushover.id}:${config.pushover.secret}\n`);
     });
 
     socket.addEventListener('message', async event => {
@@ -201,7 +197,7 @@ async function onNewMessage(config) {
     await deleteMessages(config, messages);
 
     messages.forEach(message => {
-        if (message.priority < config.min_priority) return;
+        if (!isNaN(config.min_priority) && message.priority < config.min_priority) return;
 
         const {text, encoder} = formatMessage(config, message);
         console.log();
@@ -352,20 +348,10 @@ function formatHTML(encoder, element) {
 }
 
 async function main() {
-    const config = {
-        email: process.env['EMAIL'],
-        password: process.env['PASSWORD'],
-        name: process.env['DEVICE_NAME'],
-        printer: process.env['PRINTER'],
-        printer_config: {
-            columns: 32,
-            feedBeforeCut: 2,
-        },
-        user_agent: 'notify-printer',
-        min_priority: process.env['MIN_PRIORITY'] ?? -Infinity,
-    }
-    config.secret = process.env['SECRET'] || await login(config);
-    config.id = process.env['ID'] || await register(config);
+    config.pushover.secret ??= await login(config);
+    config.pushover.id ??= await register(config);
+
+    fs.writeFileSync('config.json', JSON.stringify(config, null, 2));
 
     await clearMessageQueue(config);
 
