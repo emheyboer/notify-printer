@@ -12,5 +12,8 @@
     "columns": 32,
     "feedBeforeCut": 2
   },
+  "qr_code_config": {
+    "errorlevel": "l"
+  },
   "user_agent": "notify-printer"
 }

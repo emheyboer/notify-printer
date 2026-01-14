@@ -236,7 +236,7 @@ async function formatMessage(config, message) {
     if (message.html == 1) {
         const {document} = new JSDOM(message.message).window;
         text += '\n' + document.body.textContent ?? body;
-        await formatHTML(encoder, document);
+        await formatHTML(config, encoder, document);
         encoder.newline();
     } else {
         // remove leading and trailing whitespace
@@ -250,7 +250,7 @@ async function formatMessage(config, message) {
     }
 
     if (message.url) {
-        encoder.qrcode(message.url)
+        encoder.qrcode(message.url, config.qr_code_config);
         if (message.url_title) {
             text += '\n' + message.url_title;
             encoder.line(message.url_title);
@@ -263,7 +263,7 @@ async function formatMessage(config, message) {
     return {text, encoder};
 }
 
-async function formatHTML(encoder, element) {
+async function formatHTML(config, encoder, element) {
     let after;
     switch (element.nodeName) {
         case 'STRONG':
@@ -291,7 +291,7 @@ async function formatHTML(encoder, element) {
             after = encoder => encoder.invert(false);
             break;
         case 'A':
-            encoder.qrcode(element.href);
+            encoder.qrcode(element.href, config.qr_code_config);
             break;
         case 'HR':
             encoder.rule();
@@ -328,22 +328,21 @@ async function formatHTML(encoder, element) {
             after = encoder => encoder.text('"').align('left');
             break;
         case 'IMG':
-            const src = element.src;
-            if (!src) break;
+            if (!element.src) break;
             try {
-                const image = await loadImage(src);
+                const image = await loadImage(element.src);
                 encoder.image(image, ...resize(image.width, image.height), 'atkinson');
             } catch {
-                encoder.qrcode(src);
+                encoder.qrcode(element.src, config.qr_code_config);
             }
             break;
         case 'VIDEO':
         case 'AUDIO':
         case 'EMBED':
-            encoder.qrcode(element.src);
+            encoder.qrcode(element.src, config.qr_code_config);
             break;
         case 'OBJECT':
-            encoder.qrcode(element.data);
+            encoder.qrcode(element.data, config.qr_code_config);
             break;
         case '#text':
             const lines = element.textContent.split('\n');
@@ -362,7 +361,7 @@ async function formatHTML(encoder, element) {
 
     const children = Array.from(element.childNodes);
     for (let child of children) {
-        await formatHTML(encoder, child);
+        await formatHTML(config, encoder, child);
     }
     if (after) after(encoder);
 }
