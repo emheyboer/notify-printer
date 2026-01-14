@@ -337,6 +337,14 @@ async function formatHTML(encoder, element) {
                 encoder.qrcode(src);
             }
             break;
+        case 'VIDEO':
+        case 'AUDIO':
+        case 'EMBED':
+            encoder.qrcode(element.src);
+            break;
+        case 'OBJECT':
+            encoder.qrcode(element.data);
+            break;
         case '#text':
             const lines = element.textContent.split('\n');
             lines.forEach((line, index) => {
