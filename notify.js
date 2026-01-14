@@ -7,7 +7,7 @@ const parameters = {
     message: 'message with <b>bold</b>, <u>underlined</u>, and <font color="#ffffff">inverted</font> text',
     url: 'https://example.com',
     url_title: 'example url',
-    device: config.pushover.device_name,
+    device: config.pushover.name,
     priority: 0,
     html: 1,
 };

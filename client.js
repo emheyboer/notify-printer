@@ -41,8 +41,8 @@ async function login(config) {
     console.log('logging in...');
 
     const parameters = {
-        email: config.email,
-        password: config.password,
+        email: config.pushover.email,
+        password: config.pushover.password,
     };
 
     const json = await retryFetch(api_url + '/users/login.json', {
@@ -62,7 +62,7 @@ async function register(config) {
 
     const parameters = {
         secret: config.pushover.secret,
-        name: config.pushover.device_name,
+        name: config.pushover.name,
         os: 'O',
     };
 
@@ -209,13 +209,13 @@ async function onNewMessage(config) {
 
 function sendToPrinter(config, data) {
     if (typeof data == 'string') {
-        data = new ReceiptPrinterEncoder(config.printer_config)
+        data = new ReceiptPrinterEncoder(config.printer)
             .initialize()
             .codepage('auto')
             .line(data);
     }
 
-    const child = spawn('lp', ['-d', config.printer, '-o', 'raw']);
+    const child = spawn('lp', ['-d', config.printer.name, '-o', 'raw']);
     child.stdin.write(' '.repeat(80) + '\n');
     child.stdin.write(data.cut().encode());
     child.stdin.end();
@@ -224,7 +224,7 @@ function sendToPrinter(config, data) {
 async function formatMessage(config, message) {
     const title = message.title ?? message.app;
     let text = title;
-    const encoder = new ReceiptPrinterEncoder(config.printer_config)
+    const encoder = new ReceiptPrinterEncoder(config.printer)
         .initialize()
         .codepage('auto')
         .bold(true)
@@ -250,7 +250,7 @@ async function formatMessage(config, message) {
     }
 
     if (message.url) {
-        encoder.qrcode(message.url, config.qr_code_config);
+        encoder.qrcode(message.url, config.qr_code);
         if (message.url_title) {
             text += '\n' + message.url_title;
             encoder.line(message.url_title);
@@ -291,7 +291,7 @@ async function formatHTML(config, encoder, element) {
             after = encoder => encoder.invert(false);
             break;
         case 'A':
-            encoder.qrcode(element.href, config.qr_code_config);
+            encoder.qrcode(element.href, config.qr_code);
             break;
         case 'HR':
             encoder.rule();
@@ -333,16 +333,16 @@ async function formatHTML(config, encoder, element) {
                 const image = await loadImage(element.src);
                 encoder.image(image, ...resize(image.width, image.height), 'atkinson');
             } catch {
-                encoder.qrcode(element.src, config.qr_code_config);
+                encoder.qrcode(element.src, config.qr_code);
             }
             break;
         case 'VIDEO':
         case 'AUDIO':
         case 'EMBED':
-            encoder.qrcode(element.src, config.qr_code_config);
+            encoder.qrcode(element.src, config.qr_code);
             break;
         case 'OBJECT':
-            encoder.qrcode(element.data, config.qr_code_config);
+            encoder.qrcode(element.data, config.qr_code);
             break;
         case '#text':
             const lines = element.textContent.split('\n');
@@ -370,7 +370,7 @@ function resize(width, height) {
     const initial_width = width;
 
     // font A is 12 pixels, so we do 12 * # of columns to get the width in pixels
-    const paper_width = config.printer_config.columns * 12;
+    const paper_width = config.printer.columns * 12;
 
     // resize to fit on the paper
     width = Math.min(width, paper_width);
@@ -385,7 +385,7 @@ function resize(width, height) {
 }
 
 async function main() {
-    config.printer_config.createCanvas = createCanvas;
+    config.printer.createCanvas = createCanvas;
     
     config.pushover.secret ??= await login(config);
     config.pushover.id ??= await register(config);
