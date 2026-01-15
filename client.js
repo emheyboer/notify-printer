@@ -330,8 +330,10 @@ async function formatHTML(config, encoder, element) {
         case 'IMG':
             if (!element.src) break;
             try {
-                const image = await loadImage(element.src);
-                encoder.image(image, ...resize(image.width, image.height), 'atkinson');
+                const src = new URL(element.src);
+                if (src.protocol != 'https:') break;
+                const image = await loadImage(src.href);
+                encoder.image(image, ...resize(config, image.width, image.height), 'atkinson');
             } catch {
                 encoder.qrcode(element.src, config.qr_code);
             }
@@ -366,26 +368,27 @@ async function formatHTML(config, encoder, element) {
     if (after) after(encoder);
 }
 
-function resize(width, height) {
+function resize(config, width, height) {
     const initial_width = width;
 
-    // font A is 12 pixels, so we do 12 * # of columns to get the width in pixels
-    const paper_width = config.printer.columns * 12;
-
     // resize to fit on the paper
-    width = Math.min(width, paper_width);
+    width = Math.min(width, config.printer.paper_width);
     const scale = width / initial_width;
     height *= scale;
 
     // sizes must be a multiple of 8 pixels
-    width = Math.round(width / 8) * 8;
-    height = Math.round(height / 8) * 8;
+    width = (width + 7) >> 3 << 3;
+    height = (height + 7) >> 3 << 3;
 
     return [width, height]
 }
 
 async function main() {
     config.printer.createCanvas = createCanvas;
+
+    config.printer.columns ??= 32; // a fairly safe default
+    // font A is 12 pixels wide, so # of columns * 12 gives us the available width in pixels
+    config.printer.paper_width ??= config.printer.columns * 12;
     
     config.pushover.secret ??= await login(config);
     config.pushover.id ??= await register(config);
