@@ -15,5 +15,6 @@
     "errorlevel": "l"
   },
   "min_priority": "(optional) notifications with a priority below MIN_PRIORITY will be ignored",
-  "user_agent": "notify-printer"
+  "user_agent": "notify-printer",
+  "canvas_for_plaintext": false
 }

@@ -4,6 +4,7 @@ const spawn = require('child_process').spawn;
 const {JSDOM} = require("jsdom");
 const ReceiptPrinterEncoder = require('@point-of-sale/receipt-printer-encoder');
 const { createCanvas, loadImage } = require('canvas');
+const { drawText } = require('canvas-txt');
 const config = require('./config.json');
 
 const api_url = 'https://api.pushover.net/1';
@@ -234,17 +235,16 @@ async function formatMessage(config, message) {
 
     let body = message.message;
     if (message.html == 1) {
-        const {document} = new JSDOM(message.message).window;
+        const {document} = new JSDOM(body).window;
         text += '\n' + document.body.textContent ?? body;
         await formatHTML(config, encoder, document);
         encoder.newline();
+    } else if (config.canvas_for_plaintext) {
+        text += '\n' + body;
+        renderText(config, encoder, body, {
+            monospace: message.monospace == 1,
+        });
     } else {
-        // remove leading and trailing whitespace
-        body = body.trim().split('\n').map(line => line.trim()).join('\n');
-
-        // collapse whitespace
-        body = body.replaceAll('\t', ' ').replaceAll(/ {2,}/g, ' ');
-
         text += '\n' + body;
         encoder.line(body);
     }
@@ -381,6 +381,47 @@ function resize(config, width, height) {
     height = (height + 7) >> 3 << 3;
 
     return [width, height]
+}
+
+function renderText(config, encoder, text, options = {}) {
+    options.scale ??= 1;
+    options.align ??= 'left';
+
+    const width = config.printer.paper_width;
+    let height = options.height ?? 320;
+
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = options.invert ? '#000' : '#fff';
+    ctx.fillRect(0, 0, width, height);
+ 
+    ctx.fillStyle = options.invert ? '#fff' : '#000';
+    height = drawText(ctx, text, {
+        x: 0,
+        y: 0,
+        width,
+        height,
+        fontSize: 30 * options.scale,
+        lineHeight: 30 * options.scale,
+        align: options.align,
+        vAlign: 'top',
+        font: options.monospace ? 'monospace': 'Arial',
+        fontStyle: options.italic ? 'italic' : '',
+        fontWeight: options.bold ? 'bold' : '',
+    }).height;
+
+    // round to the next multiple of 8 pixels
+    height = (height + 7) >> 3 << 3;
+
+    // if the canvas is too small, retry with a larger one
+    if (height > canvas.height) {
+        options.height = height;
+        return renderText(config, encoder, text, options);
+    }
+
+    const imageData = ctx.getImageData(0, 0, width, height);
+    encoder.image(imageData, width, height, 'threshold');
 }
 
 async function main() {

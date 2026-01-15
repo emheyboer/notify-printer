@@ -5,11 +5,12 @@ const parameters = {
     user: config.pushover.user_key,
     title: 'title',
     message: 'message with <b>bold</b>, <u>underlined</u>, and <font color="#ffffff">inverted</font> text',
-    url: 'https://example.com',
-    url_title: 'example url',
+    // url: 'https://example.com',
+    // url_title: 'example url',
     device: config.pushover.name,
     priority: 0,
-    html: 1,
+    // html: 1,
+    monospace: 1,
 };
 
 fetch('https://api.pushover.net/1/messages.json', {
