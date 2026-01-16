@@ -86,10 +86,22 @@ function drawText(ctx, x, y, text, options = {}) {
     return [x, y]
 }
 
+
+function newline(ctx, x, y, safe = false) {
+    if (x > 0) {
+        [x, y] = drawText(ctx, x, y, '', {newline: true});
+    }
+    if (safe) { // for rending elements that may otherwise cutoff preceding text
+        y += ctx.measureText('').emHeightDescent;
+    }
+    return [x, y];
+}
+
 async function drawQRCode(ctx, x, y, data) {
     const canvas = createCanvas(1, 1);
     await QRCode.toCanvas(canvas, data);
-    const [dx, dy] = resize(ctx.canvas.width, canvas.width, canvas.height)
+    const [dx, dy] = resize(ctx.canvas.width, canvas.width, canvas.height);
+    [x, y] = newline(ctx, x, y, true);
     ctx.drawImage(canvas, x, y, dx, dy);
     return [0, y + dy];
 }
@@ -100,6 +112,7 @@ async function drawImage(ctx, x, y, src) {
 
     const image = await loadImage(url.href);
     const [dx, dy] = resize(ctx.canvas.width, image.width, image.height);
+    [x, y] = newline(ctx, x, y, true);
     ctx.drawImage(image, x, y, dx, dy);
     return [0, y + dy];
 }
@@ -154,7 +167,7 @@ async function drawHTML(ctx, x = 0, y = 0, element, options) {
             ctx.fillRect(0, y, ctx.canvas.width, 2);
             break;
         case 'BR':
-            [x, y] = drawText(ctx, x, y, '', {newline: true});
+            [x, y] = newline(ctx, x, y);
             break;
         case 'LI':
             [x, y] = drawText(ctx, x, y, '• ');
@@ -223,7 +236,7 @@ async function drawMessage(ctx, x, y, message) {
         [x, y] = drawText(ctx, x, y, message.url_title || message.url);
     }
 
-    [x, y] = drawText(ctx, x, y, '', {newline: true});
+    [x, y] = newline(ctx, x, y, true);
 
     return [x, y]
 }
