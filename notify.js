@@ -4,13 +4,27 @@ const parameters = {
     token: config.pushover.token,
     user: config.pushover.user_key,
     title: 'title',
-    message: 'message with <b>bold</b>, <u>underlined</u>, and <font color="#ffffff">inverted</font> text',
-    // url: 'https://example.com',
-    // url_title: 'example url',
+    message: `<h1>h1</h1>
+<h2>h2</h2>
+<h3>h3</h3>
+<pre>monospace</pre>
+<b>bold</b>
+<i>italic</i>
+<u>underline</u>
+<mark>invert</mark>
+<strike>strike</strike>
+hr
+<hr>
+<ul>
+    <li>one</li>
+    <li>two</li>
+    <li>three</li>
+</ul>
+<img src="https://raw.githubusercontent.com/emheyboer/notify-printer/refs/heads/main/images/printer.jpg">
+<a href="https://example.com/">example url</a>`,
     device: config.pushover.name,
     priority: 0,
-    // html: 1,
-    monospace: 1,
+    html: 1,
 };
 
 fetch('https://api.pushover.net/1/messages.json', {

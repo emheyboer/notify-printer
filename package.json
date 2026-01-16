@@ -3,7 +3,8 @@
     "@point-of-sale/receipt-printer-encoder": "^3.0.3",
     "canvas": "^3.2.1",
     "canvas-txt": "^4.1.1",
-    "jsdom": "^27.4.0"
+    "jsdom": "^27.4.0",
+    "qrcode": "^1.5.4"
   },
   "scripts": {
     "start": "node client.js | tee stdout.log",

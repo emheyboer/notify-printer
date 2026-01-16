@@ -9,12 +9,9 @@
   "printer": {
     "name": "shown via `lpstat -v`",
     "columns": 32,
-    "feedBeforeCut": 2
-  },
-  "qr_code": {
-    "errorlevel": "l"
+    "feedBeforeCut": 1
   },
   "min_priority": "(optional) notifications with a priority below MIN_PRIORITY will be ignored",
   "user_agent": "notify-printer",
-  "canvas_for_plaintext": false
+  "save_render": false
 }

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 const fs = require('fs');
 const spawn = require('child_process').spawn;
-const {JSDOM} = require("jsdom");
+const { createCanvas } = require('canvas');
 const ReceiptPrinterEncoder = require('@point-of-sale/receipt-printer-encoder');
-const { createCanvas, loadImage } = require('canvas');
-const { drawText } = require('canvas-txt');
+
+const { drawMessage } = require('./rendering.js');
 const config = require('./config.json');
 
 const api_url = 'https://api.pushover.net/1';
@@ -201,9 +201,9 @@ async function onNewMessage(config) {
     for (let message of messages) {
         if (!isNaN(config.min_priority) && message.priority < config.min_priority) return;
 
-        const {text, encoder} = await formatMessage(config, message);
+        const encoder = await formatMessage(config, message);
         console.log();
-        console.log(JSON.stringify(text));
+        console.log(JSON.stringify(message, null, 2));
         sendToPrinter(config, encoder);
     }
 }
@@ -223,210 +223,34 @@ function sendToPrinter(config, data) {
 }
 
 async function formatMessage(config, message) {
-    const title = message.title ?? message.app;
-    let text = title;
+    const canvas = createCanvas(config.printer.paper_width, 1e4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    let [x, y] = [0, 0];
+
+    [x, y] = await drawMessage(ctx, x, y, message);
+           
+    let height = y + 10;
+    height = (height + 7) >> 3 << 3;
+    const imageData = ctx.getImageData(0, 0, ctx.canvas.width, height);
+
+    if (config.save_render) {
+        canvas.height = height;
+        ctx.putImageData(imageData, 0, 0);
+        fs.writeFileSync('render.png', canvas.toBuffer('image/png'));
+    }
+
     const encoder = new ReceiptPrinterEncoder(config.printer)
         .initialize()
-        .codepage('auto')
-        .bold(true)
-        .line(title)
-        .rule()
-        .bold(false);
+        .image(imageData, ctx.canvas.width, height, 'atkinson');
 
-    let body = message.message;
-    if (message.html == 1) {
-        const {document} = new JSDOM(body).window;
-        text += '\n' + document.body.textContent ?? body;
-        await formatHTML(config, encoder, document);
-        encoder.newline();
-    } else if (config.canvas_for_plaintext) {
-        text += '\n' + body;
-        renderText(config, encoder, body, {
-            monospace: message.monospace == 1,
-        });
-    } else {
-        text += '\n' + body;
-        encoder.line(body);
-    }
-
-    if (message.url) {
-        encoder.qrcode(message.url, config.qr_code);
-        if (message.url_title) {
-            text += '\n' + message.url_title;
-            encoder.line(message.url_title);
-        } else {
-            encoder.line(message.url);
-        }
-        text += '\n' + message.url;
-    }
-
-    return {text, encoder};
-}
-
-async function formatHTML(config, encoder, element) {
-    let after;
-    switch (element.nodeName) {
-        case 'STRONG':
-        case 'B':
-            encoder.bold(true);
-            after = encoder => encoder.bold(false);
-            break;
-        case 'EM':
-        case 'I': // italics aren't supported by most printers
-            encoder.italic(true);
-            after = encoder => encoder.italic(false);
-            break;
-        case 'U':
-            encoder.underline(true);
-            after = encoder => encoder.underline(false);
-            break;
-        case 'FONT': // instead of attempting to apply a font color, we just switch to white-on-black
-            if (element.color && element.color != '#000000') {
-                encoder.invert(true);
-                after = encoder => encoder.invert(false);
-            }  
-            break;
-        case 'MARK':
-            encoder.invert(true);
-            after = encoder => encoder.invert(false);
-            break;
-        case 'A':
-            encoder.qrcode(element.href, config.qr_code);
-            break;
-        case 'HR':
-            encoder.rule();
-            break;
-        case 'BR':
-            encoder.newline();
-            break;
-        case 'LI':
-            encoder.text(' - ');
-            break;
-        case 'CENTER':
-            encoder.align('center');
-            after = encoder => encoder.align('left');
-            break;
-        case 'H1':
-            encoder.size(4,4);
-            after = encoder => encoder.size(1, 1);
-            break;
-        case 'H2':
-            encoder.size(3,3);
-            after = encoder => encoder.size(1, 1);
-            break;
-        case 'H3':
-        case 'BIG':
-            encoder.size(2,2);
-            after = encoder => encoder.size(1, 1);
-            break;
-        case 'Q':
-            encoder.text('"');
-            after = encoder => encoder.text('"');
-            break;
-        case 'BLOCKQUOTE':
-            encoder.align('center').text('"');
-            after = encoder => encoder.text('"').align('left');
-            break;
-        case 'IMG':
-            if (!element.src) break;
-            try {
-                const src = new URL(element.src);
-                if (src.protocol != 'https:') break;
-                const image = await loadImage(src.href);
-                encoder.image(image, ...resize(config, image.width, image.height), 'atkinson');
-            } catch {
-                encoder.qrcode(element.src, config.qr_code);
-            }
-            break;
-        case 'VIDEO':
-        case 'AUDIO':
-        case 'EMBED':
-            encoder.qrcode(element.src, config.qr_code);
-            break;
-        case 'OBJECT':
-            encoder.qrcode(element.data, config.qr_code);
-            break;
-        case '#text':
-            const lines = element.textContent.split('\n');
-            lines.forEach((line, index) => {
-                // encoder will flush on an empty line
-                if (index == lines.length - 1) {
-                    if (line) encoder.text(line);
-                } else if (line) {
-                    encoder.line(line);
-                } else {
-                    encoder.newline();
-                }
-            })
-            break;
-    }
-
-    const children = Array.from(element.childNodes);
-    for (let child of children) {
-        await formatHTML(config, encoder, child);
-    }
-    if (after) after(encoder);
-}
-
-function resize(config, width, height) {
-    const initial_width = width;
-
-    // resize to fit on the paper
-    width = Math.min(width, config.printer.paper_width);
-    const scale = width / initial_width;
-    height *= scale;
-
-    // sizes must be a multiple of 8 pixels
-    width = (width + 7) >> 3 << 3;
-    height = (height + 7) >> 3 << 3;
-
-    return [width, height]
-}
-
-function renderText(config, encoder, text, options = {}) {
-    options.scale ??= 1;
-    options.align ??= 'left';
-
-    const width = config.printer.paper_width;
-    let height = options.height ?? 320;
-
-    const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext('2d');
-
-    ctx.fillStyle = options.invert ? '#000' : '#fff';
-    ctx.fillRect(0, 0, width, height);
- 
-    ctx.fillStyle = options.invert ? '#fff' : '#000';
-    height = drawText(ctx, text, {
-        x: 0,
-        y: 0,
-        width,
-        height,
-        fontSize: 30 * options.scale,
-        lineHeight: 30 * options.scale,
-        align: options.align,
-        vAlign: 'top',
-        font: options.monospace ? 'monospace': 'Arial',
-        fontStyle: options.italic ? 'italic' : '',
-        fontWeight: options.bold ? 'bold' : '',
-    }).height;
-
-    // round to the next multiple of 8 pixels
-    height = (height + 7) >> 3 << 3;
-
-    // if the canvas is too small, retry with a larger one
-    if (height > canvas.height) {
-        options.height = height;
-        return renderText(config, encoder, text, options);
-    }
-
-    const imageData = ctx.getImageData(0, 0, width, height);
-    encoder.image(imageData, width, height, 'threshold');
+    return encoder;
 }
 
 async function main() {
-    config.printer.createCanvas = createCanvas;
-
     config.printer.columns ??= 32; // a fairly safe default
     // font A is 12 pixels wide, so # of columns * 12 gives us the available width in pixels
     config.printer.paper_width ??= config.printer.columns * 12;

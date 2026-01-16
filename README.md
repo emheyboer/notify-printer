@@ -3,4 +3,4 @@
 2. run `npm run start`
 3. send a test notification via [pushover.net](https://pushover.net/) or by running `npm run notify`
 
-<img height="50%" width="50%" src="images/example.jpg" />
+<img height="50%" width="50%" src="images/render.png" />
