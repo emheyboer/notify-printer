@@ -200,16 +200,16 @@ async function onNewMessage(config) {
 
     for (let message of messages) {
         if (!isNaN(config.min_priority) && message.priority < config.min_priority) return;
-
-        const encoder = await formatMessage(config, message);
-        console.log();
+ 
         console.log(JSON.stringify(message, null, 2));
+        const encoder = await encodeMessage(config, message);
         sendToPrinter(config, encoder);
     }
 }
 
 function sendToPrinter(config, data) {
     if (!config.printer.enabled) return;
+    if (config.debug) console.time('print');
     if (typeof data == 'string') {
         data = new ReceiptPrinterEncoder(config.printer)
             .initialize()
@@ -221,9 +221,13 @@ function sendToPrinter(config, data) {
     child.stdin.write(' '.repeat(80) + '\n');
     child.stdin.write(data.cut().encode());
     child.stdin.end();
+
+    if (config.debug) console.timeEnd('print');
 }
 
-async function formatMessage(config, message) {
+async function encodeMessage(config, message) {
+    if (config.debug) console.time('encode message');
+
     const canvas = createCanvas(config.printer.paper_width, 1e4);
     const ctx = canvas.getContext("2d");
 
@@ -232,7 +236,9 @@ async function formatMessage(config, message) {
 
     let [x, y] = [0, 0];
 
+    if (config.debug) console.time('draw message');
     [x, y] = await drawMessage(ctx, x, y, message);
+    if (config.debug) console.timeEnd('draw message');
            
     let height = y + 10;
     height = (height + 7) >> 3 << 3;
@@ -248,6 +254,7 @@ async function formatMessage(config, message) {
         .initialize()
         .image(imageData, ctx.canvas.width, height, 'atkinson');
 
+    if (config.debug) console.timeEnd('encode message');
     return encoder;
 }
 
