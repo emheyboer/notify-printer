@@ -209,6 +209,7 @@ async function onNewMessage(config) {
 }
 
 function sendToPrinter(config, data) {
+    if (!config.printer.enabled) return;
     if (typeof data == 'string') {
         data = new ReceiptPrinterEncoder(config.printer)
             .initialize()
@@ -254,6 +255,8 @@ async function main() {
     config.printer.columns ??= 32; // a fairly safe default
     // font A is 12 pixels wide, so # of columns * 12 gives us the available width in pixels
     config.printer.paper_width ??= config.printer.columns * 12;
+
+    config.printer.enabled ??= true;
     
     config.pushover.secret ??= await login(config);
     config.pushover.id ??= await register(config);
