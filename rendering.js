@@ -182,6 +182,9 @@ async function drawHTML(ctx, x = 0, y = 0, element, options) {
         case 'BIG':
             options.scale = 1.25;
             break;
+        case 'SMALL':
+            options.scale = 0.75;
+            break;
         case 'IMG':
             try {
                 [x, y] = await drawImage(ctx, x, y, element.src);
