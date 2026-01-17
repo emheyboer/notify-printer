@@ -11,7 +11,11 @@
     "columns": 32,
     "feedBeforeCut": 1
   },
+  "canvas": {
+    "save": true,
+    "folder": "canvas"
+  },
   "min_priority": "(optional) notifications with a priority below MIN_PRIORITY will be ignored",
   "user_agent": "notify-printer",
-  "save_render": false
+  "debug": false
 }

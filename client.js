@@ -244,10 +244,10 @@ async function encodeMessage(config, message) {
     height = (height + 7) >> 3 << 3;
     const imageData = ctx.getImageData(0, 0, ctx.canvas.width, height);
 
-    if (config.save_render) {
+    if (config.canvas.save) {
         canvas.height = height;
         ctx.putImageData(imageData, 0, 0);
-        fs.writeFileSync('render.png', canvas.toBuffer('image/png'));
+        saveCanvas(config, ctx);
     }
 
     const encoder = new ReceiptPrinterEncoder(config.printer)
@@ -256,6 +256,30 @@ async function encodeMessage(config, message) {
 
     if (config.debug) console.timeEnd('encode message');
     return encoder;
+}
+
+async function saveCanvas(config, ctx) {
+    const buffer = ctx.canvas.toBuffer('image/png');
+    const folder = config.canvas.folder;
+    try {
+        fs.mkdirSync(folder);
+    } catch (err) {
+        if (err.code != 'EEXIST') throw err;
+    }
+    const filename = `${new Date().toISOString()}.png`;
+    fs.writeFileSync(`${folder}/${filename}`, buffer);
+
+    const link = `${folder}/latest.png`;
+    try {
+        fs.unlinkSync(link);
+    } catch (err) {
+        if (err.code != 'ENOENT') throw err;
+    }
+    try {
+        fs.symlinkSync(filename, link);
+    } catch (err) {
+        if (err.code != 'EEXIST') throw err;
+    }
 }
 
 async function main() {
@@ -268,7 +292,9 @@ async function main() {
     config.pushover.secret ??= await login(config);
     config.pushover.id ??= await register(config);
 
-    fs.writeFileSync('config.json', JSON.stringify(config, null, 2));
+    fs.writeFile('config.json', JSON.stringify(config, null, 2), err => {
+        if (err) throw err;
+    });
 
     await clearMessageQueue(config);
 
