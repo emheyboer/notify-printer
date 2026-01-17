@@ -13,6 +13,7 @@ const parameters = {
 <u>underline</u>
 <mark>invert</mark>
 <strike>strike</strike>
+<small>small</small>
 hr
 <hr>
 <ul>
