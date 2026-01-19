@@ -1,6 +1,5 @@
-#!/usr/bin/env node
 const fs = require('fs');
-const spawn = require('child_process').spawn;
+const { spawn } = require('child_process');
 const { createCanvas } = require('canvas');
 const ReceiptPrinterEncoder = require('@point-of-sale/receipt-printer-encoder');
 
@@ -19,13 +18,11 @@ const Frame = {
 }
 
 function check(response) {
-    if (response.status == 1) {
-        return;
-    }
+    if (response.status == 1) return;
     response.errors && response.errors.forEach(error => {
         console.error(`error (status = ${response.status}):`, error);
     });
-    process.exit(response.status);
+    process.exit(response.status || 1);
 }
 
 function retryFetch(resource, options, backoff = 500) {
@@ -199,7 +196,7 @@ async function onNewMessage(config) {
     await deleteMessages(config, messages);
 
     for (let message of messages) {
-        if (!isNaN(config.min_priority) && message.priority < config.min_priority) return;
+        if (message.priority < config.min_priority) return;
  
         console.log(JSON.stringify(message, null, 2));
         const encoder = await encodeMessage(config, message);
@@ -283,14 +280,19 @@ async function saveCanvas(config, ctx) {
 }
 
 async function main() {
+    config.printer ||= {};
     config.printer.columns ??= 32; // a fairly safe default
     // font A is 12 pixels wide, so # of columns * 12 gives us the available width in pixels
     config.printer.paper_width ??= config.printer.columns * 12;
-
     config.printer.enabled ??= true;
+
+    config.canvas ||= {};
+
+    config.min_priority = isNaN(config.min_priority) ? -Infinity : config.min_priority;
     
-    config.pushover.secret ??= await login(config);
-    config.pushover.id ??= await register(config);
+    config.pushover ||= {};
+    config.pushover.secret ||= await login(config);
+    config.pushover.id ||= await register(config);
 
     fs.writeFile('config.json', JSON.stringify(config, null, 2), err => {
         if (err) throw err;
