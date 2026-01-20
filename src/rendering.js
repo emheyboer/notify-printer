@@ -1,11 +1,9 @@
 const { createCanvas, loadImage } = require('canvas');
-const { splitText } = require('canvas-txt');
 const {JSDOM} = require("jsdom");
-const QRCode = require('qrcode')
+const QRCode = require('qrcode');
+const { wrapLines } = require('./wrapping.js');
 
 function drawText(ctx, x, y, text, options = {}) {
-    const margin = 20;
-
     options.scale ||= 1;
     if (options.scale > 1) options.newline = true;
 
@@ -21,34 +19,7 @@ function drawText(ctx, x, y, text, options = {}) {
     const measurements = ctx.measureText('');
     const line_height = measurements.emHeightAscent + measurements.emHeightDescent;
 
-    const lines = [];
-    if (x > 0) {
-        x += ctx.measureText(' ').width;
-
-        const available = ctx.canvas.width - x - margin;
-
-        if (ctx.measureText(text.trim().split(/\s/)[0]).width <= available) {
-            const [first_line, ...rest] = splitText({
-                ctx,
-                text,
-                justify: false,
-                width: available,
-            });
-
-            lines.push(first_line);
-            text = rest.join('');
-        } else {
-            x = 0;
-            y += line_height;
-        }
-    }
-
-    lines.push(...splitText({
-        ctx,
-        text,
-        justify: false,
-        width: ctx.canvas.width - margin,
-    }).filter(line => line.length));
+    const lines = wrapLines(ctx, x, text);
 
     if (!lines.length) return [x, y];
 

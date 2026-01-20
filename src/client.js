@@ -4,7 +4,7 @@ const { createCanvas } = require('canvas');
 const ReceiptPrinterEncoder = require('@point-of-sale/receipt-printer-encoder');
 
 const { drawMessage } = require('./rendering.js');
-const config = require('./config.json');
+const config = require('../config.json');
 
 const api_url = 'https://api.pushover.net/1';
 const websocket_url = 'wss://client.pushover.net/push';

@@ -1,4 +1,4 @@
-const config = require('./config.json');
+const config = require('../config.json');
 
 const parameters = {
     token: config.pushover.token,
