@@ -29,7 +29,7 @@ function wrapLines(ctx, x, text) {
             } else if (x + width[word] > max_width) {
                 output_lines.push(line);
                 x = 0;
-                line = word;
+                line = word.trimLeft();
                 width[line] ||= ctx.measureText(line).width;
                 x = width[line];
             }  else {

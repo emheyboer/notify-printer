@@ -31,7 +31,7 @@ function drawText(ctx, x, y, text, options = {}) {
             x = 0;
             y += line_height;
         };
-        line = lines[i].trim();
+        line = lines[i];
 
         width = ctx.measureText(line).width;
 
