@@ -17,5 +17,6 @@
   },
   "min_priority": "(optional) notifications with a priority below MIN_PRIORITY will be ignored",
   "user_agent": "notify-printer",
-  "debug": false
+  "debug": false,
+  "clear_queue": true
 }

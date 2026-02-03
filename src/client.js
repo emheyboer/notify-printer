@@ -146,7 +146,7 @@ function listenForMessages(config) {
                 last_keep_alive = new Date();
                 break;
             case Frame.NewMessage:
-                onNewMessage(config);
+                printNewMessages(config);
                 break;
             case Frame.Reload:
                 console.log('disconnecting (reason = reload request)...');
@@ -191,11 +191,11 @@ async function clearMessageQueue(config) {
     await deleteMessages(config, messages);
 }
 
-async function onNewMessage(config) {
+async function printNewMessages(config) {
     const messages = await getMessages(config);
     await deleteMessages(config, messages);
 
-    for (let message of messages) {
+    for (const message of messages) {
         if (message.priority < config.min_priority) return;
  
         console.log(JSON.stringify(message, null, 2));
@@ -298,7 +298,8 @@ async function main() {
         if (err) throw err;
     });
 
-    await clearMessageQueue(config);
+    if (config.clear_queue) await clearMessageQueue(config);
+    else await printNewMessages(config);
 
     listenForMessages(config);
 }
