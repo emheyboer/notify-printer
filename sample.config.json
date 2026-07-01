@@ -15,6 +15,11 @@
     "save": true,
     "folder": "canvas"
   },
+  "server": {
+    "host": "localhost",
+    "port": 1234,
+    "enabled": true
+  },
   "min_priority": "(optional) notifications with a priority below MIN_PRIORITY will be ignored",
   "user_agent": "notify-printer",
   "debug": false,

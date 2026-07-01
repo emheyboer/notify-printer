@@ -1,4 +1,5 @@
 const fs = require('fs');
+const http = require('http');
 const { spawn } = require('child_process');
 const { createCanvas } = require('canvas');
 const ReceiptPrinterEncoder = require('@point-of-sale/receipt-printer-encoder');
@@ -196,12 +197,16 @@ async function printNewMessages(config) {
     await deleteMessages(config, messages);
 
     for (const message of messages) {
-        if (message.priority < config.min_priority) return;
- 
-        console.log(JSON.stringify(message, null, 2));
-        const encoder = await encodeMessage(config, message);
-        sendToPrinter(config, encoder);
+        await renderAndPrintMessage(message);
     }
+}
+
+async function renderAndPrintMessage(message) {
+    if (message.priority < config.min_priority) return;
+
+    console.log(JSON.stringify(message, null, 2));
+    const encoder = await encodeMessage(config, message);
+    sendToPrinter(config, encoder);
 }
 
 function sendToPrinter(config, data) {
@@ -279,6 +284,40 @@ async function saveCanvas(config, ctx) {
     }
 }
 
+function handleRequest(req, res) {
+    function parseAndPrint(data) {
+        data = data.replaceAll('+', ' ');
+        const message = Object.fromEntries(data.split('&').map(kv => kv.split('=').map(decodeURIComponent)));
+
+        message.app ??= 'local';
+        message.title ??= message.app;
+        message.message ??= '';
+        message.priority ??= 0;
+
+        renderAndPrintMessage(message);
+    }
+
+    res.statusCode = 200;
+    if (req.method == 'GET') {
+        const url = new URL(`http://localhost${req.url}`);
+        const data = url.search.slice(1);
+        if (data) parseAndPrint(data);
+        else res.statusCode = 400;
+        res.end();
+    } else if (req.method == 'POST') {
+        let data = ''
+        req.on('data', function (chunk) {
+            data += chunk;
+        });
+
+        req.on('end', () => {
+            if (data) parseAndPrint(data);
+            else res.statusCode = 400;
+            res.end();
+        });
+    }
+}
+
 async function main() {
     config.printer ||= {};
     config.printer.columns ??= 32; // a fairly safe default
@@ -294,9 +333,20 @@ async function main() {
     config.pushover.secret ||= await login(config);
     config.pushover.id ||= await register(config);
 
+    config.server ||= {};
+    config.server.host ||= 'localhost';
+    config.server.port ||= 3000;
+
     fs.writeFile('config.json', JSON.stringify(config, null, 2), err => {
         if (err) throw err;
     });
+
+    if (config.server.enabled) {
+        const server = http.createServer(handleRequest);
+        server.listen(config.server.port, config.server.host, () => {
+            console.log(`started server at http://${config.server.host}:${config.server.port}`);
+        });
+    }
 
     if (config.clear_queue) await clearMessageQueue(config);
     else await printNewMessages(config);
