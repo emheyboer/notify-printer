@@ -289,7 +289,6 @@ function handleRequest(req, res) {
         data = data.replaceAll('+', ' ');
         const message = Object.fromEntries(data.split('&').map(kv => kv.split('=').map(decodeURIComponent)));
 
-        message.app ??= 'local';
         message.title ??= message.app;
         message.message ??= '';
         message.priority ??= 0;

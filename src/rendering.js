@@ -189,11 +189,13 @@ async function drawHTML(ctx, x = 0, y = 0, element, options) {
 
 async function drawMessage(ctx, x, y, message) {
     const title = message.title ?? message.app;
-    [x, y] = drawText(ctx, x, y, title, {bold: true, newline: true});
+    if (title) {
+        [x, y] = drawText(ctx, x, y, title, {bold: true, newline: true});
 
-    y += ctx.measureText('').emHeightDescent;
-    ctx.fillRect(0, y, ctx.canvas.width, 2);
-    y += 2;
+        y += ctx.measureText('').emHeightDescent;
+        ctx.fillRect(0, y, ctx.canvas.width, 2);
+        y += 2;
+    }
 
     const body = message.message;
     if (message.html == 1) {
