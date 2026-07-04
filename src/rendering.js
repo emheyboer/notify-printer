@@ -135,6 +135,7 @@ async function drawHTML(ctx, x = 0, y = 0, element, options) {
             [x, y] = await drawQRCode(ctx, x, y, element.href);
             break;
         case 'HR':
+            y += ctx.measureText('').emHeightDescent;
             ctx.fillRect(0, y, ctx.canvas.width, 2);
             break;
         case 'BR':
