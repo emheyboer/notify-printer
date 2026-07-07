@@ -13,7 +13,8 @@
   },
   "canvas": {
     "save": true,
-    "folder": "canvas"
+    "folder": "canvas",
+    "font_size": 30
   },
   "server": {
     "host": "localhost",

@@ -17,9 +17,9 @@ const parameters = {
 hr
 <hr>
 <ul>
-    <li>one</li>
-    <li>two</li>
-    <li>three</li>
+<li>one</li>
+<li>two</li>
+<li>three</li>
 </ul>
 <img src="https://raw.githubusercontent.com/emheyboer/notify-printer/refs/heads/main/images/printer.jpg">
 <a href="https://example.com/">example url</a>`,

@@ -10,7 +10,7 @@ function drawText(ctx, x, y, text, options = {}) {
     ctx.font = [
         options.italic ? 'italic' : '',
         options.bold ? 'bold' : '',
-        30 * options.scale + 'px',
+        ctx.font_size * options.scale + 'px',
         options.monospace ? 'monospace' : 'sans-serif',
     ].join(' ');
 

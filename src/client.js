@@ -232,6 +232,7 @@ async function encodeMessage(config, message) {
 
     const canvas = createCanvas(config.printer.paper_width, 1e4);
     const ctx = canvas.getContext("2d");
+    ctx.font_size = config.canvas.font_size;
 
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -325,6 +326,7 @@ async function main() {
     config.printer.enabled ??= true;
 
     config.canvas ||= {};
+    config.canvas.font_size ||= 30;
 
     config.min_priority = isNaN(config.min_priority) ? -Infinity : config.min_priority;
     
