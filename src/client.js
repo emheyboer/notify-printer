@@ -2,6 +2,7 @@ const fs = require('fs');
 const http = require('http');
 const { spawn } = require('child_process');
 const { createCanvas } = require('canvas');
+const sharp = require('sharp');
 const ReceiptPrinterEncoder = require('@point-of-sale/receipt-printer-encoder');
 
 const { drawMessage } = require('./rendering.js');
@@ -263,16 +264,19 @@ async function encodeMessage(config, message) {
 
 async function saveCanvas(config, ctx) {
     const buffer = ctx.canvas.toBuffer('image/png');
+
+    let img = sharp(buffer).grayscale().webp({near_lossless: true});
+
     const folder = config.canvas.folder;
     try {
         fs.mkdirSync(folder);
     } catch (err) {
         if (err.code != 'EEXIST') throw err;
     }
-    const filename = `${new Date().toISOString()}.png`;
-    fs.writeFileSync(`${folder}/${filename}`, buffer);
+    const filename = `${new Date().toISOString()}.webp`;
+    img.toFile(`${folder}/${filename}`)
 
-    const link = `${folder}/latest.png`;
+    const link = `${folder}/latest.webp`;
     try {
         fs.unlinkSync(link);
     } catch (err) {
