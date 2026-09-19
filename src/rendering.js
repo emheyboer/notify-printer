@@ -1,4 +1,5 @@
 const { createCanvas, loadImage } = require('canvas');
+const sharp = require('sharp');
 const {JSDOM} = require("jsdom");
 const QRCode = require('qrcode');
 const { wrapLines } = require('./wrapping.js');
@@ -81,10 +82,15 @@ async function drawImage(ctx, x, y, src) {
     const url = new URL(src);
     if (url.protocol != 'https:') return [x, y];
 
-    const image = await loadImage(url.href);
+    // sharp supports more formats, so we have it convert images
+    const buf = await fetch(url.href).then(r=>r.arrayBuffer());
+    const png = sharp(buf).png();
+    const image = await loadImage(await png.toBuffer());
+
     const [dx, dy] = resize(ctx.canvas.width, image.width, image.height);
     [x, y] = newline(ctx, x, y, true);
     ctx.drawImage(image, x, y, dx, dy);
+
     return [0, y + dy];
 }
 
