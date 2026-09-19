@@ -298,15 +298,17 @@ function handleRequest(req, res) {
         message.message ??= '';
         message.priority ??= 0;
 
-        renderAndPrintMessage(message);
+        if (message.title || message.message) {
+            renderAndPrintMessage(message);
+            return true
+        }
     }
 
     res.statusCode = 200;
     if (req.method == 'GET') {
         const url = new URL(`http://localhost${req.url}`);
         const data = url.search.slice(1);
-        if (data) parseAndPrint(data);
-        else res.statusCode = 400;
+        if (!parseAndPrint(data)) res.statusCode = 400;
         res.end();
     } else if (req.method == 'POST') {
         let data = ''
@@ -315,8 +317,7 @@ function handleRequest(req, res) {
         });
 
         req.on('end', () => {
-            if (data) parseAndPrint(data);
-            else res.statusCode = 400;
+            if (!parseAndPrint(data)) res.statusCode = 400;
             res.end();
         });
     }
