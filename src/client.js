@@ -241,7 +241,7 @@ async function encodeMessage(config, message) {
     let [x, y] = [0, 0];
 
     if (config.debug) console.time('draw message');
-    [x, y] = await drawMessage(ctx, x, y, message);
+    [x, y] = await drawMessage(config, ctx, x, y, message);
     if (config.debug) console.timeEnd('draw message');
            
     let height = y + 10;

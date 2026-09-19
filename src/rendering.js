@@ -78,12 +78,17 @@ async function drawQRCode(ctx, x, y, data) {
     return [0, y + dy];
 }
 
-async function drawImage(ctx, x, y, src) {
+async function drawImage(config, ctx, x, y, src) {
     const url = new URL(src);
     if (url.protocol != 'https:') return [x, y];
 
+    const headers = {
+        'User-Agent': config.user_agent,
+        'Accept': 'image/png,image/jpeg,image/webp,image/gif,image/avif,image/tiff,image/svg+xml'
+    };
+
     // sharp supports more formats, so we have it convert images
-    const buf = await fetch(url.href).then(r=>r.arrayBuffer());
+    const buf = await fetch(url.href, {headers}).then(r=>r.arrayBuffer());
     const png = sharp(buf).png();
     const image = await loadImage(await png.toBuffer());
 
@@ -109,7 +114,7 @@ function resize(max_width, width, height) {
     return [width, height]
 }
 
-async function drawHTML(ctx, x = 0, y = 0, element, options) {
+async function drawHTML(config, ctx, x = 0, y = 0, element, options) {
     options = structuredClone(options);
     switch (element.nodeName) {
         case 'STRONG':
@@ -165,7 +170,7 @@ async function drawHTML(ctx, x = 0, y = 0, element, options) {
             break;
         case 'IMG':
             try {
-                [x, y] = await drawImage(ctx, x, y, element.src);
+                [x, y] = await drawImage(config, ctx, x, y, element.src);
             } catch {
                 [x, y] = await drawQRCode(ctx, x, y, element.src);
             }
@@ -188,13 +193,13 @@ async function drawHTML(ctx, x = 0, y = 0, element, options) {
 
     const children = Array.from(element.childNodes);
     for (let child of children) {
-        [x, y] = await drawHTML(ctx, x, y, child, options);
+        [x, y] = await drawHTML(config, ctx, x, y, child, options);
     }
 
     return [x, y];
 }
 
-async function drawMessage(ctx, x, y, message) {
+async function drawMessage(config, ctx, x, y, message) {
     const title = message.title ?? message.app;
     if (title) {
         [x, y] = drawText(ctx, x, y, title, {bold: true, newline: true});
@@ -207,7 +212,7 @@ async function drawMessage(ctx, x, y, message) {
     const body = message.message;
     if (message.html == 1) {
         const {document} = new JSDOM(body).window;
-        [x, y] = await drawHTML(ctx, x, y, document, {});
+        [x, y] = await drawHTML(config, ctx, x, y, document, {});
     } else {
         [x, y] = drawText(ctx, x, y, body, {
             monospace: message.monospace == 1,
