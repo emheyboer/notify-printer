@@ -206,8 +206,9 @@ async function renderAndPrintMessage(message) {
     if (message.priority < config.min_priority) return;
 
     console.log(JSON.stringify(message, null, 2));
-    const encoder = await encodeMessage(config, message);
+    const {encoder, ctx} = await encodeMessage(config, message);
     sendToPrinter(config, encoder);
+    if (config.canvas.save) saveCanvas(config, ctx);
 }
 
 function sendToPrinter(config, data) {
@@ -251,7 +252,6 @@ async function encodeMessage(config, message) {
     if (config.canvas.save) {
         canvas.height = height;
         ctx.putImageData(imageData, 0, 0);
-        saveCanvas(config, ctx);
     }
 
     const encoder = new ReceiptPrinterEncoder(config.printer)
@@ -259,7 +259,7 @@ async function encodeMessage(config, message) {
         .image(imageData, ctx.canvas.width, height, 'atkinson');
 
     if (config.debug) console.timeEnd('encode message');
-    return encoder;
+    return {encoder, ctx};
 }
 
 async function saveCanvas(config, ctx) {
