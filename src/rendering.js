@@ -122,7 +122,7 @@ async function drawHTML(config, ctx, x = 0, y = 0, element, options) {
             options.bold = true;
             break;
         case 'EM':
-        case 'I': // italics aren't supported by most printers
+        case 'I':
             options.italic = true;
             break;
         case 'U':
