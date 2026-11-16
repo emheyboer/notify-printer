@@ -132,9 +132,7 @@ async function drawHTML(config, ctx, x = 0, y = 0, element, options) {
             options.strike = true;
             break;
         case 'FONT': // instead of attempting to apply a font color, we just switch to white-on-black
-            if (element.color && element.color != '#000000') {
-                options.invert = true;
-            }  
+            if (element.color) options.invert = true;
             break;
         case 'MARK':
             options.invert = true;
