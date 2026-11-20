@@ -3,6 +3,7 @@
     "enabled": true,
     "email": "can be removed after initial registration",
     "password": "can be removed after initial registration",
+    "twofa": "two-factor authentication code. omit unless required",
     "name": "e.g. 'printer'"
   },
   "server": {

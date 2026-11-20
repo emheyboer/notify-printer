@@ -44,6 +44,7 @@ async function login(config) {
         email: config.pushover.email,
         password: config.pushover.password,
     };
+    if (config.pushover.twofa) parameters.twofa = config.pushover.twofa;
 
     const json = await retryFetch(api_url + '/users/login.json', {
         method: 'post',
