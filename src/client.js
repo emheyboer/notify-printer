@@ -328,7 +328,6 @@ async function main() {
     config.printer.columns ??= 32; // a fairly safe default
     // font A is 12 pixels wide, so # of columns * 12 gives us the available width in pixels
     config.printer.paper_width ??= config.printer.columns * 12;
-    config.printer.enabled ??= true;
 
     config.canvas ||= {};
     config.canvas.font_size ||= 30;

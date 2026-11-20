@@ -5,7 +5,13 @@
     "password": "can be removed after initial registration",
     "name": "e.g. 'printer'"
   },
+  "server": {
+    "enabled": true,
+    "host": "localhost",
+    "port": 1234
+  },
   "printer": {
+    "enabled": true,
     "name": "shown via `lpstat -v`",
     "columns": 32,
     "feedBeforeCut": 1
@@ -14,11 +20,6 @@
     "save": true,
     "folder": "canvas",
     "font_size": 30
-  },
-  "server": {
-    "host": "localhost",
-    "port": 1234,
-    "enabled": true
   },
   "min_priority": "(optional) notifications with a priority below MIN_PRIORITY will be ignored",
   "user_agent": "notify-printer",
