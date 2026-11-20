@@ -336,8 +336,10 @@ async function main() {
     config.min_priority = isNaN(config.min_priority) ? -Infinity : config.min_priority;
     
     config.pushover ||= {};
-    config.pushover.secret ||= await login(config);
-    config.pushover.id ||= await register(config);
+    if (config.pushover.enabled) {
+        config.pushover.secret ||= await login(config);
+        config.pushover.id ||= await register(config);
+    }
 
     config.server ||= {};
     config.server.host ||= 'localhost';
@@ -354,10 +356,12 @@ async function main() {
         });
     }
 
-    if (config.clear_queue) await clearMessageQueue(config);
-    else await printNewMessages(config);
+    if (config.pushover.enabled) {
+        if (config.clear_queue) await clearMessageQueue(config);
+        else await printNewMessages(config);
 
-    listenForMessages(config);
+        listenForMessages(config);
+    }
 }
 
 main();

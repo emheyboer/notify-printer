@@ -1,10 +1,9 @@
 {
   "pushover": {
+    "enabled": true,
     "email": "can be removed after initial registration",
     "password": "can be removed after initial registration",
-    "name": "e.g. 'printer'",
-    "token": "(optional) app token for notify.js",
-    "user_key": "(optional) user key for notify.js"
+    "name": "e.g. 'printer'"
   },
   "printer": {
     "name": "shown via `lpstat -v`",

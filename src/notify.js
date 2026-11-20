@@ -1,8 +1,6 @@
 const config = require('../config.json');
 
 const parameters = {
-    token: config.pushover.token,
-    user: config.pushover.user_key,
     title: 'title',
     message: `<h1>h1</h1>
 <h2>h2</h2>
@@ -28,7 +26,7 @@ hr
     html: 1,
 };
 
-fetch('https://api.pushover.net/1/messages.json', {
+fetch(`http://${config.server.host}:${config.server.port}`, {
     method: 'post',
     body: new URLSearchParams(parameters),
 });
